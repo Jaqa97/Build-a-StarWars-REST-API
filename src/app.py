@@ -45,6 +45,68 @@ def handle_hello():
 
     return jsonify(response_body), 200
 
+@app.route("/people", methods=["GET"])
+def get_all_people():
+
+    return jsonify({
+        "mensaje": "aca estaran todos los personajes"
+    })
+
+@app.route("/people/<int:id>", methods=["GET"])
+def get_one_people(id):
+
+    return jsonify({
+        "mensaje": "aca estara la info del personaje con id "+str(id)
+    })
+
+@app.route("/planets", methods=["GET"])
+def get_all_planets():
+    return jsonify({
+        "mensaje":"aca estaran todos los planetas"
+    })
+
+@app.route("/planets/<int:planet_id>", methods=["GET"])
+def get_one_planet(planet_id):
+    return jsonify({
+        "mensaje":"aca estara la info del planeta con el id "+str(planet_id)
+    })
+
+@app.route("/users", methods=["GET"])
+def get_all_users():
+    return jsonify({
+        "mensaje":"aca estaran todos los usuarios"
+    })
+
+@app.route("/users/favorites", methods=["GET"])
+def get_fav_user():
+    return jsonify({
+        "mensaje": "aca estaran los favoritos del usuario "
+    })
+
+@app.route("/favorite/planet/<int:planet_id>", methods=["POST"])
+def post_fav_planet(planet_id):
+    return jsonify({
+        "mensaje": "el planeta con id "+ str(planet_id) + " ha sido agregado"
+    })
+
+@app.route("/favorite/people/<int:people_id>", methods=["POST"])
+def post_fav_person(people_id):
+    return jsonify({
+        "mensaje" : "el personaje con id "+ str(planet_id) + " ha sido agregado"
+    })
+
+@app.route("/favorite/planet/<int:planet_id>", methods=["DELETE"])
+def del_fav_planet(planet_id):
+    return jsonify({
+        "mensaje": "el planeta con id "+ str(planet_id) +"ha sido eliminado"
+    })
+
+@app.route("/favorite/people/<int:people_id>", methods=["DELETE"])
+def del_fav_pleople(people_id):
+    return jsonify({
+        "mensaje": "el planeta con id "+ str(people_id) +"ha sido eliminado"
+    })
+
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3000))
