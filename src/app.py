@@ -34,8 +34,6 @@ setup_admin(app)
 def before_request():
     g.my_data = {}
 
-# Ejemplo de uso de g
-
 
 @app.route("/")
 def index():
@@ -131,7 +129,7 @@ def post_fav_planet(planet_id):
     db.session.commit()
 
     return jsonify({
-        "mensaje": "el planeta con id " + str(planet_id) + " ha sido agregado"
+        "mensaje": "planeta id " + str(planet_id) + " agregado"
     })
 
 
@@ -147,7 +145,7 @@ def post_fav_people(people_id):
     db.session.commit()
 
     return jsonify({
-        "mensaje": "people con id " + str(people_id) + " ha sido agregado"
+        "mensaje": "people  id " + str(people_id) + "  agregado"
     })
 
 
@@ -162,11 +160,11 @@ def del_fav_planet(planet_id):
         db.session.delete(rel_planets)
         db.session.commit()
         return jsonify({
-            "mensaje": "el planeta con id " + str(planet_id) + " ha sido eliminado"
+            "mensaje": "el planeta id " + str(planet_id) + " eliminado"
         })
     else:
         return jsonify({
-            "mensaje": "No se encontró ningún personaje con el ID especificado"
+            "mensaje": "No se encontró personaje con el ID especificado"
         })
 
 
@@ -182,11 +180,11 @@ def del_fav_people(people_id):
         db.session.delete(fav_people)
         db.session.commit()
         return jsonify({
-            "mensaje": "el personaje con id " + str(people_id) + " ha sido eliminado"
+            "mensaje": "el personaje id " + str(people_id) + " eliminado"
         })
     else:
         return jsonify({
-            "mensaje": "No se encontró ningún personaje con el ID especificado"
+            "mensaje": "No se encontró personaje con el ID especificado"
         })
 
 
