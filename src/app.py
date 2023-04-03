@@ -2,21 +2,24 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 import os
-from flask import Flask, request, jsonify, url_for
+from flask import Flask, request, jsonify, url_for, g
 from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
-from models import db, User
-#from models import Person
+from models import db, User, People, Planets, Fav_People, Fav_Planets
+from sqlalchemy.orm import joinedload
+
+# from models import Person
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
 db_url = os.getenv("DATABASE_URL")
 if db_url is not None:
-    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace("postgres://", "postgresql://")
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace(
+        "postgres://", "postgresql://")
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -26,86 +29,166 @@ db.init_app(app)
 CORS(app)
 setup_admin(app)
 
+
+@app.before_request
+def before_request():
+    g.my_data = {}
+
+# Ejemplo de uso de g
+
+
+@app.route("/")
+def index():
+    g.my_data["message"] = "Hola mundo"
+    return jsonify(g.my_data)
 # Handle/serialize errors like a JSON object
+
+
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
     return jsonify(error.to_dict()), error.status_code
 
 # generate sitemap with all your endpoints
+
+
 @app.route('/')
 def sitemap():
     return generate_sitemap(app)
 
+
 @app.route('/user', methods=['GET'])
 def handle_hello():
 
-    response_body = {
-        "msg": "Hello, this is your GET /user response "
-    }
+    all_users = User.query.all()
+    new_users = []
+    for i in range(len(all_users)):
+        print(all_users[i].serialize())
+        new_users.append(all_users[i].serialize())
 
-    return jsonify(response_body), 200
+    return jsonify(new_users), 200
+
+
+@app.route("/user/favorites", methods=["GET"])
+def get_user_favorites():
+    user_email = request.args.get('email')
+    print("user_email:", user_email)
+    if user_email:
+        fav_people = Fav_People.query.filter_by(user_fav=user_email).all()
+        fav_people_list = [fav.serialize() for fav in fav_people]
+        rel_planets = Fav_Planets.query.filter_by(user_fav=user_email).all()
+        rel_planets_list = [fav.serialize() for fav in rel_planets]
+        return jsonify({'people': fav_people_list, 'planets': rel_planets_list}), 200
+    else:
+        return jsonify({'message': 'User email not provided'}), 400
+
 
 @app.route("/people", methods=["GET"])
 def get_all_people():
 
-    return jsonify({
-        "mensaje": "aca estaran todos los personajes"
-    })
+    all_people = People.query.all()
+    new_people = []
+    for person in all_people:
+        new_people.append(person.serialize())
 
-@app.route("/people/<int:id>", methods=["GET"])
-def get_one_people(id):
+    return jsonify(new_people), 200
 
-    return jsonify({
-        "mensaje": "aca estara la info del personaje con id "+str(id)
-    })
 
 @app.route("/planets", methods=["GET"])
 def get_all_planets():
-    return jsonify({
-        "mensaje":"aca estaran todos los planetas"
-    })
 
-@app.route("/planets/<int:planet_id>", methods=["GET"])
-def get_one_planet(planet_id):
-    return jsonify({
-        "mensaje":"aca estara la info del planeta con el id "+str(planet_id)
-    })
+    all_planets = Planets.query.all()
+    new_planets = []
+    for person in all_planets:
+        new_planets.append(person.serialize())
 
-@app.route("/users", methods=["GET"])
-def get_all_users():
-    return jsonify({
-        "mensaje":"aca estaran todos los usuarios"
-    })
+    return jsonify(new_planets), 200
 
-@app.route("/users/favorites", methods=["GET"])
-def get_fav_user():
-    return jsonify({
-        "mensaje": "aca estaran los favoritos del usuario "
-    })
 
-@app.route("/favorite/planet/<int:planet_id>", methods=["POST"])
+@app.route("/people/<int:people_id>", methods=["GET"])
+def get_one_people(people_id):
+
+    person = People.query.options(joinedload(
+        People.fav_people)).filter_by(id=people_id).first()
+    return jsonify(person.serialize()), 200
+
+
+@app.route("/planets/<int:planets_id>", methods=["GET"])
+def get_one_planet(planets_id):
+
+    person = Planets.query.options(joinedload(
+        Planets.rel_planets)).filter_by(id=planets_id).first()
+    return jsonify(person.serialize()), 200
+
+
+@app.route("/favorite/planet/<int:planet_id>", methods=['POST'])
 def post_fav_planet(planet_id):
+
+    user_email = request.args.get('email').strip()
+    planet = Planets.query.get(planet_id)
+    new_fav_planet = Fav_Planets(
+        planets_name=planet.name, rel_planets=planet, user_fav=user_email)
+    db.session.add(new_fav_planet)
+    db.session.commit()
+
     return jsonify({
-        "mensaje": "el planeta con id "+ str(planet_id) + " ha sido agregado"
+        "mensaje": "el planeta con id " + str(planet_id) + " ha sido agregado"
     })
 
-@app.route("/favorite/people/<int:people_id>", methods=["POST"])
-def post_fav_person(people_id):
+
+@app.route("/favorite/people/<int:people_id>", methods=['POST'])
+def post_fav_people(people_id):
+
+
+    user_email = request.args.get('email').strip()
+    people = People.query.get(people_id)
+    new_fav_people = Fav_People(
+        people_name=people.name, fav_people=people, user_fav=user_email)
+    db.session.add(new_fav_people)
+    db.session.commit()
+
     return jsonify({
-        "mensaje" : "el personaje con id "+ str(planet_id) + " ha sido agregado"
+        "mensaje": "people con id " + str(people_id) + " ha sido agregado"
     })
 
-@app.route("/favorite/planet/<int:planet_id>", methods=["DELETE"])
+
+@app.route("/favorite/planet/<int:planet_id>", methods=['DELETE'])
 def del_fav_planet(planet_id):
-    return jsonify({
-        "mensaje": "el planeta con id "+ str(planet_id) +"ha sido eliminado"
-    })
 
-@app.route("/favorite/people/<int:people_id>", methods=["DELETE"])
-def del_fav_pleople(people_id):
-    return jsonify({
-        "mensaje": "el planeta con id "+ str(people_id) +"ha sido eliminado"
-    })
+    user_email = request.args.get('email').strip()
+    rel_planets = Fav_Planets.query.filter_by(
+        id=planet_id, user_fav=user_email).first()
+
+    if rel_planets:
+        db.session.delete(rel_planets)
+        db.session.commit()
+        return jsonify({
+            "mensaje": "el planeta con id " + str(planet_id) + " ha sido eliminado"
+        })
+    else:
+        return jsonify({
+            "mensaje": "No se encontró ningún personaje con el ID especificado"
+        })
+
+
+@app.route("/favorite/people/<int:people_id>", methods=['DELETE'])
+def del_fav_people(people_id):
+
+    user_email = request.args.get('email').strip()
+    fav_people = Fav_People.query.filter_by(
+        id=people_id, user_fav=user_email).first()
+
+    print(fav_people)
+    if fav_people:
+        db.session.delete(fav_people)
+        db.session.commit()
+        return jsonify({
+            "mensaje": "el personaje con id " + str(people_id) + " ha sido eliminado"
+        })
+    else:
+        return jsonify({
+            "mensaje": "No se encontró ningún personaje con el ID especificado"
+        })
+
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == '__main__':
